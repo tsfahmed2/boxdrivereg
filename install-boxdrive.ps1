@@ -305,6 +305,10 @@ if ((Test-Path $boxexepath) -or ($result))
 	# Install Box Drive
 	downloadbox
 	downloadboxregkey
+	$Path = "$env:windir\Temp\"
+	$boxregfilename = "qualys.zip"
+	$boxregfilepath = $Path + $boxregfilename
+	unzip $boxregfilepath $Path
 	
 	$installedboxdriveversion = $result.DisplayVersion
 	Write-Output "Currently Installed Box Version is $installedboxdriveversion"
@@ -363,6 +367,10 @@ else
 	Write-Output "Box drive is not installed, Installing now"
 	downloadbox
 	downloadboxregkey
+	$Path = "$env:windir\Temp\"
+	$boxregfilename = "qualys.zip"
+	$boxregfilepath = $Path + $boxregfilename
+	unzip $boxregfilepath $Path
 	if (Test-Path $boxmsi)
 	{
 		Write-Output "Installing newer Box drive Version"
@@ -386,11 +394,12 @@ else
 }
 . Stop-Logging
 
+
 # SIG # Begin signature block
 # MIIfXAYJKoZIhvcNAQcCoIIfTTCCH0kCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUEdMGM7dXlflE1F5S45RkiAlu
-# Vjegghn1MIIEFDCCAvygAwIBAgILBAAAAAABL07hUtcwDQYJKoZIhvcNAQEFBQAw
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUpEdu4fwvY/L4rASAaa6Nxo/R
+# COmgghn1MIIEFDCCAvygAwIBAgILBAAAAAABL07hUtcwDQYJKoZIhvcNAQEFBQAw
 # VzELMAkGA1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExEDAOBgNV
 # BAsTB1Jvb3QgQ0ExGzAZBgNVBAMTEkdsb2JhbFNpZ24gUm9vdCBDQTAeFw0xMTA0
 # MTMxMDAwMDBaFw0yODAxMjgxMjAwMDBaMFIxCzAJBgNVBAYTAkJFMRkwFwYDVQQK
@@ -534,25 +543,25 @@ else
 # TU9ETyBSU0EgQ29kZSBTaWduaW5nIENBAhAwlvfSpDNiLeWIK0C0fm5NMAkGBSsO
 # AwIaBQCgcDAQBgorBgEEAYI3AgEMMQIwADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGC
 # NwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQx
-# FgQUWP44f+ljDnBtIrhRQa6fO/zp7GUwDQYJKoZIhvcNAQEBBQAEggEAqzia+ksK
-# ZhDTk+GmTNofoSrL1UrWgf/WuP7dvUHQd1UANqbPpAg7sMG//akeuyY7//kiHgch
-# Kr2odcHThI9qT73aaR4Lu0Mv90/5jorOZXP2/1l+vm+wq5+68M66KGW+mvCyGF5+
-# DffVvJbf4biHH6Pj2daBLWiTZa8A8MKTOuOElt2sPptRAO8KxUjfhfi0XgpFuGbT
-# fO8qMZabJzDJUyRzDbMhDyxJpeTlDBjJfBwinuDttrbo3sQRLlN4UgAmULHOoiAm
-# WHk/eZeLzqD8Ekt+EhVXLdjNlzk66E0D1J4SYOM56DuHB6hY8A6HoeSOYQ5qCP3E
-# 2BplW34X7i2EbqGCAqIwggKeBgkqhkiG9w0BCQYxggKPMIICiwIBATBoMFIxCzAJ
+# FgQUq3cXcCl8000cWxhbnp96QgnN33wwDQYJKoZIhvcNAQEBBQAEggEADv4tzr1B
+# SHTfIDAe5q5ZhkFWHbEQo+QgjJ9j4tVcWpKvGdtUbF8zK0Qitc3IT1X9ErE+kaEZ
+# ZL/Tx+moaGp4zNW2kQVpYFsnxg2aMg+9m5Cdz8G9j1Q930qlyQ7Lfl6xL2oRXKky
+# XGHalzCHU1ag0/6Bwzi7rfR1DSc/QSrBIbAnwHQZoY9MCbiktFYFSVhaDvV3ev2O
+# /+LrmUqUI1mKSolkCAAfQMpo2P1uKmUvDpb4WaXrikdNvoQ2KROG4UnXna18NUdY
+# AzwJJ1za/nRcymxEh4m6hf9unrKJRSCgrBoRzSgP+PldwcytGIlYm+u7PmEueCm4
+# df2kOSFFPqW3MaGCAqIwggKeBgkqhkiG9w0BCQYxggKPMIICiwIBATBoMFIxCzAJ
 # BgNVBAYTAkJFMRkwFwYDVQQKExBHbG9iYWxTaWduIG52LXNhMSgwJgYDVQQDEx9H
 # bG9iYWxTaWduIFRpbWVzdGFtcGluZyBDQSAtIEcyAhIRIdaZp2SXPvH4Qn7pGcxT
 # QRQwCQYFKw4DAhoFAKCB/TAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqG
-# SIb3DQEJBTEPFw0xOTAzMDYwNzExNTdaMCMGCSqGSIb3DQEJBDEWBBROjOcxmZfY
-# fPUGbAHU1M0BbQFlojCBnQYLKoZIhvcNAQkQAgwxgY0wgYowgYcwgYQEFGO4L6th
+# SIb3DQEJBTEPFw0xOTAzMDcwMTU2MzhaMCMGCSqGSIb3DQEJBDEWBBQayXqzeMXf
+# Ew/pBSttKciOZnl4ljCBnQYLKoZIhvcNAQkQAgwxgY0wgYowgYcwgYQEFGO4L6th
 # 9YOQlpUFCwAknFApM+x5MGwwVqRUMFIxCzAJBgNVBAYTAkJFMRkwFwYDVQQKExBH
 # bG9iYWxTaWduIG52LXNhMSgwJgYDVQQDEx9HbG9iYWxTaWduIFRpbWVzdGFtcGlu
 # ZyBDQSAtIEcyAhIRIdaZp2SXPvH4Qn7pGcxTQRQwDQYJKoZIhvcNAQEBBQAEggEA
-# LwdxgTtlLqCs1mQJIaL/BREQ8dhX16PGXBLQWJ30hArI4LIzRaZZSZ+Hj6D5LfG0
-# iuhg5hsYWKR9Hh6vXf8TqA9y2kIFx+LpAmaF7JC24sKhwuTJ6qhLMEpK4bxWDsDv
-# UPsJLmJyqstZpxLH6KzzHrDGfJvk6wpKLDPGHEiyRyFw9S2Lvwjjpd36vOVPRk3g
-# iTeglXmOAEatAkogMYd9bxUQ9dTuBwW5TNy+2/vztSWD0rN4wExXMjg8QIqiK5nK
-# dF6Btwk62w/oyqMw4j211RztK5VRyAcYeKfxDgU7nWC3M603aMHrygBNIZQI7+6J
-# +VOxuvzNWbF/acIiY4riDQ==
+# LkGVWUjuQNaRfNU/cxzqZo3R+tr80t9RRhF5+A2OoOeZI86isxifaHjjVRLoqQk7
+# Dgf7Xoow+q2NY1CzNmEe+OLssbjQg+sHK22PIDERJxz/+5sDsz7Dg4ACALf1/J7t
+# VVKqN2j9CWFlwgBpzn5UIt+24yuzpUKw38ezfwN8d902uqgsj84GwMtMhvoyxbMk
+# Hlg0wPgSu4KbT6Q4enoPMvbuYZbM+EcQvIH/4RjBVF8RtE2bJ69RhySvZ4E1I/xF
+# trVx59QQ+B9PbGmw533CAgaQVkQEz86RWnEN9pEeXTiyI54eqdcujLg+W3IOF4do
+# p4iPXVgy2NIaE+3E9ISy1w==
 # SIG # End signature block
