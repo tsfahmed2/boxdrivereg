@@ -290,6 +290,36 @@ function killbox()
 	sleep -Seconds 9
 }
 
+function Test-RegistryValue
+{
+	
+	param (
+		
+		[parameter(Mandatory = $true)]
+		[ValidateNotNullOrEmpty()]
+		$Path,
+		[parameter(Mandatory = $true)]
+		[ValidateNotNullOrEmpty()]
+		$Value
+	)
+	
+	try
+	{
+		
+		Get-ItemProperty -Path $Path | Select-Object -ExpandProperty $Value -ErrorAction Stop | Out-Null
+		return $true
+	}
+	
+	catch
+	{
+		
+		return $false
+		
+	}
+	
+}
+
+
 $boxexepath = "$env:ProgramFiles\Box\Box\box.exe"
 $result = Get-InstalledApps | where { $_.DisplayName -like "Box" }
 $boxmsi = "$env:windir\Temp\Box-x64.msi"
@@ -307,7 +337,9 @@ if ((Test-Path $boxexepath) -or ($result))
 	downloadboxregkey
 	$Path = "$env:windir\Temp\"
 	$boxregfilename = "qualys.zip"
+	$boxregistrykeyfile = "qualys.reg"
 	$boxregfilepath = $Path + $boxregfilename
+	$extractedboxregkey = $Path + $boxregistrykeyfile
 	unzip $boxregfilepath $Path
 	
 	$installedboxdriveversion = $result.DisplayVersion
@@ -318,9 +350,23 @@ if ((Test-Path $boxexepath) -or ($result))
 	{
 		Write-Output "Latest box drive installed, importing reg key"
 		Write-Output "Import reg values to set bannedprocesses"
-		Invoke-Command { reg import $boxregfilepath *>&1 | Out-Null }
+		if (Test-Path -Path $boxregfilepath)
+		{
+			Invoke-Command { reg import $extractedboxregkey *>&1 | Out-Null }
+			$checkforregkey = Test-RegistryValue -Path 'HKLM:\SOFTWARE\Box\Box' -Value 'CustomBoxLocation'
+			if ($checkforregkey)
+			{
+				Write-Output "Reg keys installed"
+			}
+			else
+			{
+				Write-Output "Reg keys absent"
+				exit 55
+			}
+			Remove-Item $boxregfilepath, $extractedboxregkey -Force
+		}
 		killbox
-		Start-Process $boxexepath -ErrorAction SilentlyContinue
+		#Start-Process $boxexepath -ErrorAction SilentlyContinue
 	}
 	else
 	{
@@ -343,7 +389,7 @@ if ((Test-Path $boxexepath) -or ($result))
 		if (Test-Path $boxmsi)
 		{
 			Write-Output "Installing newer Box drive Version"
-			$boxmsi | Install-MSIFile -Verbose
+			$process = $boxmsi | Install-MSIFile -Verbose
 			$exitcode = $process.ExitCode
 			Write-Output "Installer completed with exit code $exitcode"
 		}
@@ -354,7 +400,21 @@ if ((Test-Path $boxexepath) -or ($result))
 		}
 		
 		Write-Output "Import reg values to set bannedprocesses"
-		Invoke-Command { reg import $boxregfilepath *>&1 | Out-Null }
+		if (Test-Path -Path $boxregfilepath)
+		{
+			Invoke-Command { reg import $extractedboxregkey *>&1 | Out-Null }
+			$checkforregkey = Test-RegistryValue -Path 'HKLM:\SOFTWARE\Box\Box' -Value 'CustomBoxLocation'
+			if ($checkforregkey)
+			{
+				Write-Output "Reg keys installed"
+			}
+			else
+			{
+				Write-Output "Reg keys absent"
+				exit 55
+			}
+			Remove-Item $boxregfilepath -Force
+		}
 	}
 	# Cleanup
 	Write-Output "removing $boxmsi."
@@ -369,12 +429,15 @@ else
 	downloadboxregkey
 	$Path = "$env:windir\Temp\"
 	$boxregfilename = "qualys.zip"
+	$boxregistrykeyfile = "qualys.reg"
 	$boxregfilepath = $Path + $boxregfilename
+	$extractedboxregkey = $Path + $boxregistrykeyfile
+	
 	unzip $boxregfilepath $Path
 	if (Test-Path $boxmsi)
 	{
 		Write-Output "Installing newer Box drive Version"
-		$boxmsi | Install-MSIFile -Verbose
+		$process = $boxmsi | Install-MSIFile -Verbose
 		$exitcode = $process.ExitCode
 		Write-Output "Installer completed with exit code $exitcode"
 	}
@@ -384,12 +447,26 @@ else
 		exit 99
 	}
 	
-	Write-Output "Import reg values to set bannedprocesses"
-	Invoke-Command { reg import $boxregfilepath *>&1 | Out-Null }
+	Write-Output " Killing Box processes"
 	killbox
-	Start-Process $boxexepath -ErrorAction SilentlyContinue
+	Write-Output "Import reg values to set bannedprocesses"
+	if (Test-Path -Path $boxregfilepath)
+	{
+		Invoke-Command { reg import $extractedboxregkey *>&1 | Out-Null }
+		$checkforregkey = Test-RegistryValue -Path 'HKLM:\SOFTWARE\Box\Box' -Value 'CustomBoxLocation'
+		if ($checkforregkey)
+		{
+			Write-Output "Reg keys installed"
+		}
+		else
+		{
+			Write-Output "Reg keys absent"
+			exit 55
+		}
+		Remove-Item $extractedboxregkey, $boxregfilepath -Force
+	}
+	#Start-Process $boxexepath -ErrorAction SilentlyContinue
 	Remove-Item $boxmsi -Force
-	Remove-Item $boxregfilepath -Force
 	
 }
 . Stop-Logging
@@ -398,8 +475,8 @@ else
 # SIG # Begin signature block
 # MIIfXAYJKoZIhvcNAQcCoIIfTTCCH0kCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUpEdu4fwvY/L4rASAaa6Nxo/R
-# COmgghn1MIIEFDCCAvygAwIBAgILBAAAAAABL07hUtcwDQYJKoZIhvcNAQEFBQAw
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU2w2XHi3jpdqODUiI0F8lINcT
+# jM+gghn1MIIEFDCCAvygAwIBAgILBAAAAAABL07hUtcwDQYJKoZIhvcNAQEFBQAw
 # VzELMAkGA1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExEDAOBgNV
 # BAsTB1Jvb3QgQ0ExGzAZBgNVBAMTEkdsb2JhbFNpZ24gUm9vdCBDQTAeFw0xMTA0
 # MTMxMDAwMDBaFw0yODAxMjgxMjAwMDBaMFIxCzAJBgNVBAYTAkJFMRkwFwYDVQQK
@@ -543,25 +620,25 @@ else
 # TU9ETyBSU0EgQ29kZSBTaWduaW5nIENBAhAwlvfSpDNiLeWIK0C0fm5NMAkGBSsO
 # AwIaBQCgcDAQBgorBgEEAYI3AgEMMQIwADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGC
 # NwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQx
-# FgQUq3cXcCl8000cWxhbnp96QgnN33wwDQYJKoZIhvcNAQEBBQAEggEADv4tzr1B
-# SHTfIDAe5q5ZhkFWHbEQo+QgjJ9j4tVcWpKvGdtUbF8zK0Qitc3IT1X9ErE+kaEZ
-# ZL/Tx+moaGp4zNW2kQVpYFsnxg2aMg+9m5Cdz8G9j1Q930qlyQ7Lfl6xL2oRXKky
-# XGHalzCHU1ag0/6Bwzi7rfR1DSc/QSrBIbAnwHQZoY9MCbiktFYFSVhaDvV3ev2O
-# /+LrmUqUI1mKSolkCAAfQMpo2P1uKmUvDpb4WaXrikdNvoQ2KROG4UnXna18NUdY
-# AzwJJ1za/nRcymxEh4m6hf9unrKJRSCgrBoRzSgP+PldwcytGIlYm+u7PmEueCm4
-# df2kOSFFPqW3MaGCAqIwggKeBgkqhkiG9w0BCQYxggKPMIICiwIBATBoMFIxCzAJ
+# FgQU2ANaOjVnQYQCxI33qJasv7hl6L4wDQYJKoZIhvcNAQEBBQAEggEAgs3B5N/q
+# lW+0Rz2xXzInrd/Ald0juEdTtfMwVOeadoMwjjhMXk4KijKBXMJPGwfQ5XhwzR3W
+# dte2Bt7pe5V22Og+xDvQ3zjAd9OzlRHuXW42ddUOh77W9IRK+Au+ooe8a6EvG2YN
+# nhj9B+UyexqcRyBoJi+MWwR7zgLJZkokLi5o/4M9SwRXjkglhy6m7+Fk5EznHad2
+# I8jnRsx1KpoEaWwxnwlVek1VaRJApiyipOAo9KtT0ZFTrtz+Q+Xwa78wfo8ylQd/
+# E+Yzy7xLQJtRuTv+CO00uYiRtGRnMkd0hSj82qob6zbtV9cjG+1eORNsVNxJQevm
+# iWB4kKi9EpIzhaGCAqIwggKeBgkqhkiG9w0BCQYxggKPMIICiwIBATBoMFIxCzAJ
 # BgNVBAYTAkJFMRkwFwYDVQQKExBHbG9iYWxTaWduIG52LXNhMSgwJgYDVQQDEx9H
 # bG9iYWxTaWduIFRpbWVzdGFtcGluZyBDQSAtIEcyAhIRIdaZp2SXPvH4Qn7pGcxT
 # QRQwCQYFKw4DAhoFAKCB/TAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqG
-# SIb3DQEJBTEPFw0xOTAzMDcwMTU2MzhaMCMGCSqGSIb3DQEJBDEWBBQayXqzeMXf
-# Ew/pBSttKciOZnl4ljCBnQYLKoZIhvcNAQkQAgwxgY0wgYowgYcwgYQEFGO4L6th
+# SIb3DQEJBTEPFw0xOTAzMDcwMjI1MDVaMCMGCSqGSIb3DQEJBDEWBBSApnoHtZcd
+# F5uGGOWNJjL2KRlBAzCBnQYLKoZIhvcNAQkQAgwxgY0wgYowgYcwgYQEFGO4L6th
 # 9YOQlpUFCwAknFApM+x5MGwwVqRUMFIxCzAJBgNVBAYTAkJFMRkwFwYDVQQKExBH
 # bG9iYWxTaWduIG52LXNhMSgwJgYDVQQDEx9HbG9iYWxTaWduIFRpbWVzdGFtcGlu
 # ZyBDQSAtIEcyAhIRIdaZp2SXPvH4Qn7pGcxTQRQwDQYJKoZIhvcNAQEBBQAEggEA
-# LkGVWUjuQNaRfNU/cxzqZo3R+tr80t9RRhF5+A2OoOeZI86isxifaHjjVRLoqQk7
-# Dgf7Xoow+q2NY1CzNmEe+OLssbjQg+sHK22PIDERJxz/+5sDsz7Dg4ACALf1/J7t
-# VVKqN2j9CWFlwgBpzn5UIt+24yuzpUKw38ezfwN8d902uqgsj84GwMtMhvoyxbMk
-# Hlg0wPgSu4KbT6Q4enoPMvbuYZbM+EcQvIH/4RjBVF8RtE2bJ69RhySvZ4E1I/xF
-# trVx59QQ+B9PbGmw533CAgaQVkQEz86RWnEN9pEeXTiyI54eqdcujLg+W3IOF4do
-# p4iPXVgy2NIaE+3E9ISy1w==
+# dLywT2Zw5Oa9VhVAb3mr2ioywwlz53TR+AYQ/SusfrsiFjGluLDhTrVLqyjdAPxP
+# +9dB8BcpjeGy922bZJTifblBgH3Nw8+9uKdd5pznuenEHyERMjGsykVoZe/uoXV1
+# 3jn9+TGGxzLNnj9ZyBi2uE39lbHxIQdlH6EapQUXzr1i8JJ4xmjS/6VHamSwWuqR
+# GjOu+Faq3WHuNmd4GgbNK2uvHixuyPfVAtbLge+s7ixeGl2Ge15/ux96eWCbu98v
+# 9gJYSUzY35kaYtEU43P0vtfKAo8gzaw8qfCZ6haB6oAwHsIYIe1HbtX9+gi7ebYg
+# GFf9Oqa/lCeeEfNwyKSRMQ==
 # SIG # End signature block
