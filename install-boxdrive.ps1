@@ -100,20 +100,6 @@ function Get-InstalledApps
 }
 
 
-<#if running in x86 mode restart in x64 mode.
-if ($PSHome -match 'syswow')
-{
-    Write-Output 'Found syswow'
-    Write-Output 'Shell to x64 version'
-    start-process "C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe" -arg "-ExecutionPolicy bypass  -file $e" -Wait
-    Write-Output 'Return from x64 version; exiting'
-    exit
-}
-#>
-
-
-
-##################
 
 
 function downloadbox
@@ -299,7 +285,6 @@ function Test-RegistryValue
 $boxexepath = "$env:ProgramFiles\Box\Box\box.exe"
 $result = Get-InstalledApps | where { $_.DisplayName -like "Box" }
 $boxmsi = "$env:windir\Temp\Box-x64.msi"
-$boxregfilepath = "$env:windir\Temp\qualys.reg"
 $checkforregkey = Test-RegistryValue -Path HKLM:\SOFTWARE\Box\Box -Value CustomBoxLocation
 
 if ((Test-Path $boxexepath) -or ($result))
@@ -333,6 +318,10 @@ if ((Test-Path $boxexepath) -or ($result))
 	else
 	{
 		
+		
+		$result = Get-InstalledApps | where { $_.DisplayName -like "Box" }
+		Write-Output "Installed apps like box - $result"
+		Write-Output "Begin removing older versions of box drive"
 		killbox
 		#remove current box installs
 		ForEach ($u in $result)
@@ -343,7 +332,7 @@ if ((Test-Path $boxexepath) -or ($result))
 			$UnInstall = $UnInstall.Trim()
 			Write-Output $UnInstall
 			Write-Output 'Start MSIExec'
-			Write-Output "msiexec.exe" -arg "/X $UnInstall /qn /l*v $env:TEMP\$UnInstall.log" -Wait
+			Start-Process "msiexec.exe" -arg "/X $UnInstall /qn /l*v $env:TEMP\$UnInstall.log" -Wait
 			Write-Output 'After MSIExec'
 			sleep -Seconds 8
 		}
@@ -351,15 +340,12 @@ if ((Test-Path $boxexepath) -or ($result))
 		if (Test-Path $boxmsi)
 		{
 			Write-Output "Installing newer Box drive Version"
-			$process = $boxmsi | Install-MSIFile -Verbose
-			$exitcode = $process.ExitCode
-			Write-Output "Installer completed with exit code $exitcode"
+			$boxmsi | Install-MSIFile -Verbose
 			Write-Output "Import reg values to set bannedprocesses"
 			$a = @(
 				"QualysAgent.exe",
 				"csia.exe"
 			)
-			
 			$b = "C:\"
 			New-ItemProperty -Path "hklm:SOFTWARE\Box\Box" -PropertyType MultiString -Name BannedProcessNames -Value $a
 			New-ItemProperty -Path "HKLM:\SOFTWARE\Box\Box" -PropertyType String -Name CustomBoxLocation -Value $b
@@ -376,7 +362,6 @@ if ((Test-Path $boxexepath) -or ($result))
 	# Cleanup
 	Write-Output "removing $boxmsi."
 	Remove-Item $boxmsi -Force
-	Remove-Item $boxregfilepath -Force
 }
 
 else
@@ -388,9 +373,14 @@ else
 	if (Test-Path $boxmsi)
 	{
 		Write-Output "Installing newer Box drive Version"
-		$process = $boxmsi | Install-MSIFile -Verbose
-		$exitcode = $process.ExitCode
-		Write-Output "Installer completed with exit code $exitcode"
+		$boxmsi | Install-MSIFile -Verbose
+		$a = @(
+			"QualysAgent.exe",
+			"csia.exe"
+		)
+		$b = "C:\"
+		New-ItemProperty -Path "hklm:SOFTWARE\Box\Box" -PropertyType MultiString -Name BannedProcessNames -Value $a
+		New-ItemProperty -Path "HKLM:\SOFTWARE\Box\Box" -PropertyType String -Name CustomBoxLocation -Value $b
 	}
 	else
 	{
@@ -400,27 +390,17 @@ else
 	
 	Write-Output " Killing Box processes"
 	killbox
-	Write-Output "Import reg values to set bannedprocesses"
-	$a = @(
-		"QualysAgent.exe",
-		"csia.exe"
-	)
-	
-	$b = "C:\"
-	New-ItemProperty -Path "hklm:SOFTWARE\Box\Box" -PropertyType MultiString -Name BannedProcessNames -Value $a
-	New-ItemProperty -Path "HKLM:\SOFTWARE\Box\Box" -PropertyType String -Name CustomBoxLocation -Value $b
-	#Start-Process $boxexepath -ErrorAction SilentlyContinue
+	Write-Output "Removing box MSI"
 	Remove-Item $boxmsi -Force
 	
 }
 . Stop-Logging
 
-
 # SIG # Begin signature block
 # MIIfXAYJKoZIhvcNAQcCoIIfTTCCH0kCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUCAhSh5q+kDJsUSOFT0mbOtlE
-# WAegghn1MIIEFDCCAvygAwIBAgILBAAAAAABL07hUtcwDQYJKoZIhvcNAQEFBQAw
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZUTstzbx8x678sXHXjF08mPD
+# /cigghn1MIIEFDCCAvygAwIBAgILBAAAAAABL07hUtcwDQYJKoZIhvcNAQEFBQAw
 # VzELMAkGA1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExEDAOBgNV
 # BAsTB1Jvb3QgQ0ExGzAZBgNVBAMTEkdsb2JhbFNpZ24gUm9vdCBDQTAeFw0xMTA0
 # MTMxMDAwMDBaFw0yODAxMjgxMjAwMDBaMFIxCzAJBgNVBAYTAkJFMRkwFwYDVQQK
@@ -564,25 +544,25 @@ else
 # TU9ETyBSU0EgQ29kZSBTaWduaW5nIENBAhAwlvfSpDNiLeWIK0C0fm5NMAkGBSsO
 # AwIaBQCgcDAQBgorBgEEAYI3AgEMMQIwADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGC
 # NwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQx
-# FgQUtgr98WrlhGHQSfvkTrtxJZtjb/QwDQYJKoZIhvcNAQEBBQAEggEAeyk+k9bA
-# 0yBwHDN+PonaQ9bbr30ikFHJTxM/ZiPHXXc26spDVnxBvn/apCAQVY0FeZBdgq9W
-# xGimXE4KqrWztuYFN0VAubjo+K8oED2A/wrxCiLy4aeQu+qUvmOUBdyYB+NHElrE
-# makg1er4sITRsBIU+3NtW8q8iFZRZyZOA5QYpR/qQtF8l2ZHPlTgdlxCVnmVpNaZ
-# sAaKzAY7cqZvy746w+GlPcg2HCFx9SOLhzub+Q5dCSxTzCYvJWlUdWSrI4ezRFLV
-# zZm8lxXWLAuh1PCz/QE/F1gQqvaOtbRS6a2lD/bgcTWuoRkq7rSn1AI8mTZedj77
-# WwLkzcz6PptGs6GCAqIwggKeBgkqhkiG9w0BCQYxggKPMIICiwIBATBoMFIxCzAJ
+# FgQULKU8YNH/30Cy4sOMeu8Tewg2yHIwDQYJKoZIhvcNAQEBBQAEggEAZHSg4m6y
+# 5HP8ptnf+F2ukM/o3inGsM+sdqSSpxV87poFfYqm8i8hsUhnX+x4Okdq15KW66Cy
+# 4wt5IQt4WqvRgb5pIlDQSpnG1ALmeGTOJGtFs08NqJoPlw6jcZ6fvXNja6qBhGUm
+# Yex0QdtE2oqHACWEdmBBXIfJyng7HFJiURRSCUUhIAwNtjNqOUL1nwXxWkNul4Wt
+# xO7dmwbsoS43hYI73M6xyVfTd2tZS4JXVaKq6QKnKsr8a8hkh5obK+XBhKg1A9sz
+# fC35qmyn6Bqq42Hhw4AfBXnUkdYGEEqzoTWj1mQb4cjG345sIzkuv5LYrsc6a4Dz
+# FuLkgioavikusqGCAqIwggKeBgkqhkiG9w0BCQYxggKPMIICiwIBATBoMFIxCzAJ
 # BgNVBAYTAkJFMRkwFwYDVQQKExBHbG9iYWxTaWduIG52LXNhMSgwJgYDVQQDEx9H
 # bG9iYWxTaWduIFRpbWVzdGFtcGluZyBDQSAtIEcyAhIRIdaZp2SXPvH4Qn7pGcxT
 # QRQwCQYFKw4DAhoFAKCB/TAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqG
-# SIb3DQEJBTEPFw0xOTAzMDcwNDMxMDZaMCMGCSqGSIb3DQEJBDEWBBTFWErGzOlo
-# H5yLZtX2xmUGotk5BzCBnQYLKoZIhvcNAQkQAgwxgY0wgYowgYcwgYQEFGO4L6th
+# SIb3DQEJBTEPFw0xOTAzMDcwNTM2MDRaMCMGCSqGSIb3DQEJBDEWBBSXvtAvtk4K
+# mrba9c/bmocX7b8vtjCBnQYLKoZIhvcNAQkQAgwxgY0wgYowgYcwgYQEFGO4L6th
 # 9YOQlpUFCwAknFApM+x5MGwwVqRUMFIxCzAJBgNVBAYTAkJFMRkwFwYDVQQKExBH
 # bG9iYWxTaWduIG52LXNhMSgwJgYDVQQDEx9HbG9iYWxTaWduIFRpbWVzdGFtcGlu
 # ZyBDQSAtIEcyAhIRIdaZp2SXPvH4Qn7pGcxTQRQwDQYJKoZIhvcNAQEBBQAEggEA
-# EcoRvX9+Ee11d57UgNPFnTBGmpWg55TxD66v4/hWfRT3WMXHK65Y8JEcKvynbm1T
-# ACsZQ8l4aT0ooiOkSnfn4KSc6BGkTl96Aesz8hCMOsD11Se5l+ypp2uIs04Gi32Z
-# aTnJ7P1QslUHvCDOgTsQNUiMM3Zju4kfpQh4LHHzLB97xGBdFa4xjUUmv5nstWjw
-# 0Gnne75+eBbF7DCgF4Y6hgD8zsFu2glo9j5NN+BLhLxeTN3DFAHyDJeCgJr8gyDJ
-# UcD0Dp3EX4PkwoNSr7vlNkHVpNkB4Hno6CKEiWF23JLh0PUYHVjgO1i4AI2wpNc6
-# 2AeW8rDNKlN+Zn6v8TBB4Q==
+# HgsQR+kCUBW9QqZCz0ipZ72S0KyR9JHwOLyPJaDhYhvqSoWlQFK4GDFUYK08xps8
+# WaYLfCwQFGzQHpFwFSBVwraKrkyxTPF7aZkV5nULHbAtJz+deFkuglCw1R1IMiWT
+# DTlUgnTsDvZmQmk/tqklGoEa693nTVAsj3BYgicdffuSacYoH6MmGcZlTGDpfRbW
+# 0xbeNwyX2hb76VTULfU9/vxVcHS63uyk/iRxNqZ7KnVK/YfTha2UalijMVj6q/gz
+# pljDZ05avM8ftY/0UB8SYIZRxSfqGwOkd9Py3Af+UFKXQuqfI9ymckySAWyboWKB
+# S8At2t17JY8AttZVmqiRVQ==
 # SIG # End signature block
