@@ -233,6 +233,79 @@ function get-msifileinformation
 
 
 
+function Start-ProcessInteractive 
+{
+  param(
+    $Path = "${env:ProgramFiles}\Box\Box\Box.exe",
+    
+    #$Arguments = 'www.powertheshell.com',
+    
+    [Parameter(Mandatory=$true)]
+    $Computername,
+    
+    [Parameter(Mandatory=$true)]
+    $Username
+  )
+
+
+      
+  $xml = @"
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo />
+  <Triggers />
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>false</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <IdleSettings />
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT72H</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>"$Path"</Command>
+      <Arguments>$Arguments</Arguments>
+    </Exec>
+  </Actions>
+  <Principals>
+    <Principal id="Author">
+      <UserId>$Username</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+</Task>
+"@
+      
+  $jobname = 'remotejob{0}' -f (Get-Random)
+  $filename = [Guid]::NewGuid().ToString('d')  
+  $filepath = "$env:temp\$filename"
+  
+  $xml | Set-Content -Path $filepath -Encoding Unicode
+  
+  try
+  {
+    $ErrorActionPreference = 'Stop'
+    schtasks.exe /CREATE /TN $jobname /XML $filepath /S $ComputerName  2>&1
+    schtasks.exe /RUN /TN $jobname /S $ComputerName  2>&1
+    schtasks.exe /DELETE /TN $jobname /s $ComputerName /F  2>&1
+  }
+  catch
+  {
+    Write-Warning ("While accessing \\$ComputerName : " + $_.Exception.Message)
+  }
+  Remove-Item -Path $filepath
+}
+
 
 
 
@@ -410,6 +483,19 @@ if ((Test-Path $boxexepath) -or ($installedversion))
 	# Cleanup
 	Write-Output "removing $boxmsi."
 	Remove-Item $boxmsi -Force
+    $explorerprocesses = @(Get-WmiObject -Query "Select * FROM Win32_Process WHERE Name='explorer.exe'" -ErrorAction SilentlyContinue)
+    if ($explorerprocesses.Count -eq 0)
+    {
+        "No explorer process found / Nobody interactively logged on"
+    } else {
+        foreach ($i in $explorerprocesses)
+        {
+            $Username = $i.GetOwner().User
+            #$Domain = $i.GetOwner().Domain
+            #$Domain + "\" + $Username + " logged on since: " + ($i.ConvertToDateTime($i.CreationDate))
+        }
+    }
+    Start-ProcessInteractive -Computername $env:COMPUTERNAME -Username $Username
 }
 
 elseif ($installedversion -eq $Null) {
@@ -458,6 +544,17 @@ elseif ($installedversion -eq $Null) {
 	killbox
 	Write-Output "Removing box MSI"
 	Remove-Item $boxmsi -Force
-	
+	if ($explorerprocesses.Count -eq 0)
+    {
+        "No explorer process found / Nobody interactively logged on"
+    } else {
+        foreach ($i in $explorerprocesses)
+        {
+            $Username = $i.GetOwner().User
+            #$Domain = $i.GetOwner().Domain
+            #$Domain + "\" + $Username + " logged on since: " + ($i.ConvertToDateTime($i.CreationDate))
+        }
+    }
+    Start-ProcessInteractive -Computername $env:COMPUTERNAME -Username $Username
 }
 . Stop-Logging
