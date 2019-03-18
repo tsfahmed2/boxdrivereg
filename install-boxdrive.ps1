@@ -544,6 +544,8 @@ elseif ($installedversion -eq $Null) {
 	killbox
 	Write-Output "Removing box MSI"
 	Remove-Item $boxmsi -Force
+    
+    $explorerprocesses = @(Get-WmiObject -Query "Select * FROM Win32_Process WHERE Name='explorer.exe'" -ErrorAction SilentlyContinue)
 	if ($explorerprocesses.Count -eq 0)
     {
         "No explorer process found / Nobody interactively logged on"
